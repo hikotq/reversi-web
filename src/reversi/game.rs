@@ -18,19 +18,22 @@ impl Game {
         board.set_cell(Pos { x: 3, y: 4 }, Cell::Piece(Color::Black));
         board.set_cell(Pos { x: 4, y: 3 }, Cell::Piece(Color::Black));
 
-        Self {
+        let mut game = Self {
             board: board,
             turn: Color::Black,
             is_start: false,
             is_over: false,
-        }
+        };
+        game.update_available_cell();
+        game
     }
 
     pub fn change_turn(&mut self) {
         self.turn = match self.turn {
             Color::Black => Color::White,
             _ => Color::Black,
-        }
+        };
+        self.update_available_cell();
     }
 
     pub fn winner(&self) -> Winner {
