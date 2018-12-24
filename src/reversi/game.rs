@@ -13,10 +13,10 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         let mut board = Board::new();
-        board.set_cell(Pos { x: 3, y: 3 }, Cell::Piece(Color::Black));
-        board.set_cell(Pos { x: 4, y: 4 }, Cell::Piece(Color::Black));
-        board.set_cell(Pos { x: 3, y: 4 }, Cell::Piece(Color::White));
-        board.set_cell(Pos { x: 4, y: 3 }, Cell::Piece(Color::White));
+        board.set_cell(Pos { x: 3, y: 3 }, Cell::Piece(Color::White));
+        board.set_cell(Pos { x: 4, y: 4 }, Cell::Piece(Color::White));
+        board.set_cell(Pos { x: 3, y: 4 }, Cell::Piece(Color::Black));
+        board.set_cell(Pos { x: 4, y: 3 }, Cell::Piece(Color::Black));
 
         Self {
             board: board,
