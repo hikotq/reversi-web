@@ -48,6 +48,9 @@ impl Game {
     }
 
     pub fn put_piece(&mut self, m: Move) -> Result<(), String> {
+        if !Color::equal(&self.turn, &m.color) {
+            return Err(format!("It's not {:?} turn", m.color));
+        }
         if !self.board.get_cell(Pos { x: m.x, y: m.y }).is_available() {
             return Err("Not Available Cell".to_string());
         }
