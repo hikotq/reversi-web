@@ -1,0 +1,20 @@
+<link rel="stylesheet" type="text/css" href="list.css">
+<link rel="stylesheet" type="text/css" href="board.css">
+<script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+
+<div id="room-list"></div>
+
+<div id="app" class="container">
+  <table class="table">
+    <tr v-for="(row, idx1) in board">
+      <td v-bind:class="'index-'+idx1+idx2" v-for="(piece, idx2) in row" v-on:click="click_put">
+        <div class="content">
+          <span v-bind:class="piece+'-piece'"></span>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<script src="reversi.js"></script>
+<script src="room-list.js"></script>
