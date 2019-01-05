@@ -48,6 +48,9 @@ impl Game {
     }
 
     pub fn winner(&self) -> Winner {
+        if !self.is_over {
+            return None;
+        }
         let (black, white) = self.board.count_piece();
         if black > white {
             Some(Color::Black)
