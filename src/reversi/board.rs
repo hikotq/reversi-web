@@ -72,6 +72,24 @@ impl Cell {
     }
 }
 
+impl fmt::Display for Cell {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::Cell::*;
+        let s = match self {
+            Piece(color) => {
+                if color.is_black() {
+                    "black"
+                } else {
+                    "white"
+                }
+            }
+            Available => "available",
+            Empty => "empty",
+        };
+        write!(f, "{}", s.to_string())
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Pos<T> {
     pub x: T,
