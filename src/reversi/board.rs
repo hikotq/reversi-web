@@ -1,5 +1,5 @@
 use std::fmt;
-use std::ops::Add;
+use std::ops::{Add, Deref};
 use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Eq, PartialEq, Debug)]
@@ -132,32 +132,26 @@ impl Move {
     }
 }
 
-pub struct Board {
-    cell_table: [Cell; 64],
-    pub dir: [Pos<i32>; 8],
+#[derive(Copy, Clone)]
+pub struct Board([Cell; 64]);
+
+impl Deref for Board {
+    type Target = [Cell; 64];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl fmt::Debug for Board {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        self.cell_table[..].fmt(formatter)
+        self.0[..].fmt(formatter)
     }
 }
 
 impl Board {
     pub fn new() -> Self {
-        Board {
-            cell_table: [self::Cell::Empty; 64],
-            dir: [
-                Pos { x: 1, y: 0 },
-                Pos { x: 1, y: 1 },
-                Pos { x: 0, y: 1 },
-                Pos { x: -1, y: 1 },
-                Pos { x: -1, y: 0 },
-                Pos { x: -1, y: -1 },
-                Pos { x: 0, y: -1 },
-                Pos { x: 1, y: -1 },
-            ],
-        }
+        Board([self::Cell::Empty; 64])
     }
 
     pub fn all_pos() -> Vec<Pos<usize>> {
@@ -171,15 +165,15 @@ impl Board {
     }
 
     pub fn get_cell(&self, p: Pos<usize>) -> Cell {
-        self.cell_table[p.y * 8 + p.x]
+        self.0[p.y * 8 + p.x]
     }
 
     pub fn set_cell(&mut self, p: Pos<usize>, cell: Cell) {
-        self.cell_table[p.y * 8 + p.x] = cell;
+        self.0[p.y * 8 + p.x] = cell;
     }
 
     pub fn count_piece(&self) -> (usize, usize) {
-        self.cell_table.iter().fold((0, 0), |acc, x| match x {
+        self.0.iter().fold((0, 0), |acc, x| match x {
             Cell::Piece(color) if color.is_black() => (acc.0 + 1, acc.1),
             Cell::Piece(color) => (acc.0, acc.1 + 1),
             _ => acc,
@@ -187,7 +181,7 @@ impl Board {
     }
 
     pub fn has_available_cell(&self) -> bool {
-        self.cell_table.contains(&Cell::Available)
+        self.0.contains(&Cell::Available)
     }
 
     pub fn show(&self) {

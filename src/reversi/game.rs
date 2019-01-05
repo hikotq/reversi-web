@@ -1,5 +1,16 @@
 use reversi::board::{Board, Cell, Color, Move, Pos};
 
+const DIR: [Pos<i32>; 8] = [
+    Pos { x: 1, y: 0 },
+    Pos { x: 1, y: 1 },
+    Pos { x: 0, y: 1 },
+    Pos { x: -1, y: 1 },
+    Pos { x: -1, y: 0 },
+    Pos { x: -1, y: -1 },
+    Pos { x: 0, y: -1 },
+    Pos { x: 1, y: -1 },
+];
+
 pub type Winner = Option<Color>;
 
 #[derive(Debug)]
@@ -75,7 +86,7 @@ impl Game {
     }
 
     pub fn can_put(&self, pos: Pos<usize>, turn: Color) -> bool {
-        for d in self.board.dir.iter() {
+        for d in &DIR {
             let mut dir_p = pos + *d;
             if let Some(p) = dir_p {
                 match self.board.get_cell(p) {
@@ -105,7 +116,7 @@ impl Game {
     }
 
     pub fn flip(&mut self, pos: Pos<usize>) {
-        for d in &self.board.dir.clone() {
+        for d in &DIR {
             let p = pos + *d;
             if p.is_none() {
                 continue;
