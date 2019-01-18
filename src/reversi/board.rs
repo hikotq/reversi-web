@@ -39,7 +39,7 @@ impl FromStr for Color {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Eq, PartialEq, Debug)]
 pub enum Cell {
     Empty,
     Available,
