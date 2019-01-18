@@ -377,6 +377,8 @@ impl Handler<Join> for GameServer {
         //1Pの色とは逆の色を入れる.
         //TODO 1Pの色が指定されていない場合は1Pの色はランダムで決めて, 2Pはもう片方の色にする.
         //TODO Rust2018Editionを適用してNLLを使う
+        let black_id;
+        let white_id;
         {
             let GameRoom {
                 ref mut player1,
@@ -396,15 +398,30 @@ impl Handler<Join> for GameServer {
                 player1.color = Some(Color::Black);
                 player2.color = Some(Color::White);
             }
+            if player1.color.unwrap().is_black() {
+                black_id = player1.id;
+                white_id = player2.id;
+            } else {
+                white_id = player1.id;
+                black_id = player2.id;
+            }
             game.is_start = true;
         }
         self.send_reversi_message(
             &name,
             ReversiMessage {
                 kind: ReversiMessageKind::GameStart,
-                body: None,
+                body: Some(ReversiMessageBody::GameStart(Color::Black)),
             },
-            Some(uid),
+            black_id,
+        );
+        self.send_reversi_message(
+            &name,
+            ReversiMessage {
+                kind: ReversiMessageKind::GameStart,
+                body: Some(ReversiMessageBody::GameStart(Color::White)),
+            },
+            uid,
         );
     }
 }
