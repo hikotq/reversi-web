@@ -28,6 +28,7 @@ var vm = new Vue({
     return {
       board: board,
       turn: null, 
+      ownColor: null, 
       conn: null
     };
   },
@@ -38,60 +39,18 @@ var vm = new Vue({
       let y = Number(match[1]);
       let x = Number(match[2]);
       console.log("x:" + x + ", y:" + y);
-      console.log(this.canPut(y, x, "black"));
-      if (this.canPut(x, y, "black")) {
-        console.log("hi");
-        this.put("black", x, y);
-        this.send_move("Black", x, y);
+      console.log(this.canPut(y, x, this.turn));
+      if (this.conn != null && this.turn == this.ownColor && this.canPut(x, y, this.turn)) {
+        this.send_move(this.turn, x, y);
       }
     }, 
     put: function(color, x, y) {
       this.board[y][x] = color;
       this.$forceUpdate();
     }, 
-    canPut: function(x, y, turn) {
-      let dir = [
-          [1, 0],
-          [1, 1],
-          [0, 1],
-          [-1, 1],
-          [-1, 0],
-          [-1, -1],
-          [0, -1],
-          [1, -1],
-      ];
-      let opposite = function(color) {
-        if (color == "black") {
-          return "white";
-        }
-        return "black";
-      };
-      let on_board = function(x, y) {
-         return 0 <= x && x < 8 && 0 <= y && y < 8;
-      };
-      for(let d of dir) {
-        let cx = x + d[0];
-        let cy = y + d[1];
-        if(on_board(cx, cy)) {
-          if(this.board[cy][cx] != opposite(turn)) {
-            continue;
-          } 
-          cx += d[0];
-          cy += d[1];
-        } else {
-          continue;
-        }
-        while(on_board(cx, cy)) {
-          if(this.board[cy][cx] == turn) {
-            return true;
-          } else if(this.board[cy][cx] == opposite(turn)) {
-            break;
-          }
-          cx += d[0];
-          cy += d[1];
-        }
-      }
-      return false;
+    canPut: function(x, y) {
+      return this.board[y][x] == AVAILABLE;
+    }, 
     }, 
     disconnect: function() {
       if (this.conn != null) {
