@@ -437,9 +437,13 @@ impl Handler<MakeRoom> for GameServer {
         } = msg;
 
         println!("{} made GameRoom: {}", uname, name);
-        if self.rooms.get_mut(&name).is_none() {
-            self.rooms.insert(name.clone(), HashSet::new());
+
+        if self.rooms.get_mut(&name).is_some() {
+            eprintln!("Room {} is already created", name);
+            return;
         }
+
+        self.rooms.insert(name.clone(), HashSet::new());
         self.rooms.get_mut(&name).unwrap().insert(uid);
         self.games.insert(
             name.clone(),
