@@ -421,7 +421,7 @@ impl Handler<Join> for GameServer {
                 kind: ReversiMessageKind::GameStart,
                 body: Some(ReversiMessageBody::GameStart(Color::White)),
             },
-            uid,
+            white_id,
         );
     }
 }
