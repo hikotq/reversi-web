@@ -206,7 +206,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                         }
                         "/move" => {
                             if v.len() == 4 {
-                                let color = if v[1] == "Black" {
+                                let color = if v[1].to_uppercase() == "BLACK" {
                                     Color::Black
                                 } else {
                                     Color::White
