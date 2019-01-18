@@ -135,7 +135,7 @@ var vm = new Vue({
       let that = this;
       let cmd_array = ["/makeRoom", channel, uname];
       if(color != null) {
-        that.color
+        that.color = color;
         cmd_array.push(color);
       }
       let cmd = cmd_array.join(' ');
