@@ -271,23 +271,52 @@ impl Handler<ClientReversiMoveMessage> for GameServer {
 
     fn handle(&mut self, msg: ClientReversiMoveMessage, _: &mut Context<Self>) {
         use self::{ReversiMessage, ReversiMessageBody, ReversiMessageKind};
-        if let Some(game) = self.games.get(&msg.room) {
-            if game.game.is_start {
-                self.send_reversi_message(
-                    &msg.room,
-                    ReversiMessage {
-                        kind: ReversiMessageKind::Move,
-                        body: Some(ReversiMessageBody::Move(msg.reversi_move)),
-                    },
-                    Some(msg.id),
-                );
-            } else {
-                println!("Game is not started");
+        let mut is_over = false;
+        if self.games.contains_key(&msg.room) {
+            let result = {
+                let game = self.games.get_mut(&msg.room).unwrap();
+                println!("{:?}", game.game.board);
+                if game.game.is_start {
+                    let result = game.game.put_piece(msg.reversi_move);
+                    if result.is_ok() && !game.game.is_over {
+                        game.game.change_turn();
+                        is_over = game.game.is_over;
+                    }
+                    result
+                } else {
+                    Err("Game is not started".to_string())
+                }
+            };
+            println!("{:?}", result);
+            if result.is_ok() {
+                if is_over {
+                    let game = &self.games.get(&msg.room).unwrap().game;
+                    let winner = game.winner();
+                    let game = Game::from(game);
+                    self.send_reversi_message_room(
+                        &msg.room,
+                        ReversiMessage {
+                            kind: ReversiMessageKind::GameOver,
+                            body: Some(ReversiMessageBody::GameOver((game, winner))),
+                        },
+                        None,
+                    );
+                } else {
+                    self.send_reversi_message_room(
+                        &msg.room,
+                        ReversiMessage {
+                            kind: ReversiMessageKind::Game,
+                            body: Some(ReversiMessageBody::Game(Game::from(
+                                &self.games.get(&msg.room).unwrap().game,
+                            ))),
+                        },
+                        None,
+                    );
+                }
             }
         }
     }
 }
-
 
 impl Handler<ListRooms> for GameServer {
     type Result = MessageResult<ListRooms>;
