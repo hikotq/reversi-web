@@ -1,6 +1,6 @@
-Vue.component('room-td', {
+Vue.component('room-tr', {
   props: ['name', 'standByPlayer', 'black', 'white'],
-  template: '<div><td>{{ name }}</td><td v-bind:class="classObject">{{ standByPlayer }}</td></div>', 
+  template: '<tr><td>{{ name }}</td><td v-bind:class="classObject">{{ standByPlayer }}</td></tr>', 
   computed: {
     classObject: function() {
       return {
@@ -15,16 +15,17 @@ Vue.component('room-td', {
 new Vue({
   el: '#room-list',
   template: `
-      <tbody>
-        <tr v-for="room_name in Object.keys(rooms)">
-          <room-td
-          v-bind:name="room_name" 
-          v-bind:standByPlayer="rooms[room_name].standByPlayer" 
-          v-bind:black="rooms[room_name].black" 
-          v-bind:white="rooms[room_name].white"
-          ></room-td>
-        </tr>
-      </tbody>`, 
+      <table rules="all">
+        <tbody>
+          <room-tr v-for="room_name in Object.keys(rooms)"
+            v-bind:name="room_name" 
+            v-bind:standByPlayer="rooms[room_name].standByPlayer" 
+            v-bind:black="rooms[room_name].black" 
+            v-bind:white="rooms[room_name].white"
+          >
+          </room-tr>
+        </tbody>
+      </table>`, 
   data() {
     return {
       rooms: {

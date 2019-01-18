@@ -1,3 +1,7 @@
 td.black-td {
   background:#000000;
 }
+
+table, td, th{
+    border: 1px solid black;
+}

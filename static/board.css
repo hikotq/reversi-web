@@ -3,22 +3,22 @@ table {
   border-collapse: collapse;
 }
 
-table tr, table td {
+table tr.board_row, table td.board_col {
   border: solid 1px black;
   /*実線 1px 黒*/
 }
 
-td {
+td.board_col {
   width: 12.5%;
   position: relative;
   filter: drop-shadow(0 0 0.75rem #FFFFFF);
 }
-td:after {
+td.board_col:after {
   content: '';
   display: block;
   margin-top: 100%;
 }
-td .content {
+td.board_col .content {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -27,7 +27,7 @@ td .content {
   background: skyblue;
 }
 
-td {
+td.board_col {
   text-align: center;
 }
 
