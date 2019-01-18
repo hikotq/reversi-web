@@ -51,6 +51,11 @@ var vm = new Vue({
     canPut: function(x, y) {
       return this.board[y][x] == AVAILABLE;
     }, 
+    oppositeColor: function(color) {
+      if(color.toLowerCase() == 'black') {
+        return WHITE;
+      }    
+      return BLACK;
     }, 
     disconnect: function() {
       if (this.conn != null) {
