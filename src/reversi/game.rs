@@ -19,6 +19,7 @@ pub struct Game {
     pub turn: Color,
     pub is_start: bool,
     pub is_over: bool,
+    pub pass: bool,
 }
 
 impl Game {
@@ -34,6 +35,7 @@ impl Game {
             turn: Color::Black,
             is_start: false,
             is_over: false,
+            pass: false,
         };
         game.update_available_cell();
         game
@@ -85,6 +87,18 @@ impl Game {
             } else if self.board.get_cell(pos).is_available() {
                 self.board.set_cell(pos, Cell::Empty);
             }
+        }
+        let (_, _, available, _) = self.board.count_piece();
+        println!("{}", available);
+        if available == 0 {
+            if self.pass {
+                self.is_over = true;
+            } else {
+                self.pass = true;
+                self.change_turn();
+            }
+        } else {
+            self.pass = false;
         }
     }
 
