@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use rand::{self, rngs::ThreadRng, Rng};
-use reversi::board::{Color, Move as ReversiMove};
-use reversi::game::{Game, Winner};
+use reversi::board::{Cell, Color, Move as ReversiMove};
+use reversi::game::{Game as ReversiGame, Winner};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Message)]
@@ -30,7 +30,28 @@ pub enum ReversiError {
     InvalidMove,
 }
 
-#[derive(Serialize, Deserialize, Message, Copy, Clone)]
+#[derive(Serialize, Deserialize, Message, Clone)]
+pub struct Game {
+    board: Vec<String>,
+    turn: Color,
+}
+
+impl From<&ReversiGame> for Game {
+    fn from(game: &ReversiGame) -> Self {
+        let board = game
+            .board
+            .iter()
+            .cloned()
+            .map(|cell| cell.to_string())
+            .collect();
+        Self {
+            board: board,
+            turn: game.turn,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Message, Clone)]
 pub struct ReversiMessage {
     kind: ReversiMessageKind,
     body: Option<ReversiMessageBody>,
@@ -38,6 +59,7 @@ pub struct ReversiMessage {
 
 #[derive(Serialize, Deserialize, Copy, Clone)]
 enum ReversiMessageKind {
+    Game,
     GameStart,
     GameOver,
     Turn,
@@ -45,11 +67,13 @@ enum ReversiMessageKind {
     ReversiError,
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ReversiMessageBody {
-    GameOver(Winner),
+    GameOver((Game, Winner)),
     Turn(Color),
     Move(ReversiMove),
+    GameStart(Color),
+    Game(Game),
 }
 
 type Uid = usize;
@@ -81,7 +105,7 @@ impl Player {
 }
 
 pub struct GameRoom {
-    game: Game,
+    game: ReversiGame,
     player1: Option<Player>,
     player2: Option<Player>,
 }
@@ -89,7 +113,7 @@ pub struct GameRoom {
 impl GameRoom {
     fn new() -> Self {
         GameRoom {
-            game: Game::new(),
+            game: ReversiGame::new(),
             player1: None,
             player2: None,
         }
@@ -380,7 +404,7 @@ impl Handler<MakeRoom> for GameServer {
                     color: color,
                 }),
                 player2: None,
-                game: Game::new(),
+                game: ReversiGame::new(),
             },
         );
     }
