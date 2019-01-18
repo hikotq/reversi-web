@@ -107,7 +107,7 @@ var vm = new Vue({
               }
             }
             that.$forceUpdate();
-            alert("Game is over!\n" + winner + " is  winner!");
+            swal("Game is over!", winner + " is  winner!");
           default:
             break;
         }
