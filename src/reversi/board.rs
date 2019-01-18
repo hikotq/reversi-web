@@ -190,12 +190,29 @@ impl Board {
         self.0[p.y * 8 + p.x] = cell;
     }
 
-    pub fn count_piece(&self) -> (usize, usize) {
-        self.0.iter().fold((0, 0), |acc, x| match x {
-            Cell::Piece(color) if color.is_black() => (acc.0 + 1, acc.1),
-            Cell::Piece(color) => (acc.0, acc.1 + 1),
-            _ => acc,
-        })
+    pub fn count_piece(&self) -> (usize, usize, usize, usize) {
+        let mut black = 0;
+        let mut white = 0;
+        let mut available = 0;
+        let mut empty = 0;
+        for p in self.0.iter() {
+            match p {
+                Cell::Piece(color) => {
+                    if color.is_black() {
+                        black += 1;
+                    } else {
+                        white += 1;
+                    }
+                }
+                Cell::Available => {
+                    available += 1;
+                }
+                Cell::Empty => {
+                    empty += 1;
+                }
+            }
+        }
+        (black, white, available, empty)
     }
 
     pub fn has_available_cell(&self) -> bool {

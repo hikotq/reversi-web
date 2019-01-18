@@ -176,7 +176,17 @@ impl Default for GameServer {
 }
 
 impl GameServer {
-    fn send_reversi_message(&self, room: &str, message: ReversiMessage, skip_id: Option<usize>) {
+    fn send_reversi_message(&self, room: &str, message: ReversiMessage, id: Uid) {
+        if let Some(addr) = self.sessions.get(&id) {
+            let _ = addr.do_send(message.clone());
+        }
+    }
+    fn send_reversi_message_room(
+        &self,
+        room: &str,
+        message: ReversiMessage,
+        skip_id: Option<usize>,
+    ) {
         if let Some(sessions) = self.rooms.get(room) {
             for id in sessions {
                 if let Some(skip_id) = skip_id {
@@ -184,9 +194,7 @@ impl GameServer {
                         continue;
                     }
                 }
-                if let Some(addr) = self.sessions.get(id) {
-                    let _ = addr.do_send(message.clone());
-                }
+                self.send_reversi_message(room, message.clone(), *id);
             }
         }
     }

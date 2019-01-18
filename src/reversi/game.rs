@@ -51,7 +51,7 @@ impl Game {
         if !self.is_over {
             return None;
         }
-        let (black, white) = self.board.count_piece();
+        let (black, white, _, _) = self.board.count_piece();
         if black > white {
             Some(Color::Black)
         } else if white > black {
