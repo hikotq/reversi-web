@@ -77,11 +77,39 @@ var vm = new Vue({
       that.conn.onmessage = function(e) {
         console.log(e.data);
         let message = JSON.parse(e.data);
-        if (message.kind == "Move") {
-          x = message.body.Move.x;
-          y = message.body.Move.y;
-          color = message.body.Move.color.toLowerCase();
-          that.put(color, x, y);
+        let mKind = message.kind;
+        let mBody = message.body;
+        let board = [];
+        switch(mKind) {
+          case 'GameStart':
+            let color = mBody.GameStart.toLowerCase();
+            that.turn = BLACK;
+            that.ownColor = color;
+            break;
+          case 'Game':
+            board = mBody.Game.board;
+            that.turn = mBody.Game.turn.toLowerCase();
+            for (var y = 0; y < 8; y++) {
+              for (var x = 0; x < 8; x++) {
+                that.board[y][x] = board[y * 8 + x];
+              }
+            }
+            that.$forceUpdate();
+            break;
+          case 'GameOver':
+            let game = mBody.GameOver[0];
+            board = game.board;
+            let winner = mBody.GameOver[1];
+            that.turn = game.turn.toLowerCase();
+            for (var y = 0; y < 8; y++) {
+              for (var x = 0; x < 8; x++) {
+                that.board[y][x] = board[y * 8 + x];
+              }
+            }
+            that.$forceUpdate();
+            alert("Game is over!\n" + winner + " is  winner!");
+          default:
+            break;
         }
         console.log(JSON.stringify(e.data))
       };
