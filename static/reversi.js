@@ -1,3 +1,8 @@
+var EMPTY = "empty";
+var WHITE = "white";
+var BLACK = "black";
+var AVAILABLE = "available";
+
 Vue.config.devtools = false;
 Vue.config.productionTip = false;
 
@@ -12,10 +17,14 @@ var vm = new Vue({
       }
       board.push(row);
     }
-    board[3][3] = "white";
-    board[4][4] = "white";
-    board[3][4] = "black";
-    board[4][3] = "black";
+    board[3][3] = WHITE;
+    board[4][4] = WHITE;
+    board[3][4] = BLACK;
+    board[4][3] = BLACK;
+    board[3][2] = AVAILABLE;
+    board[2][3] = AVAILABLE;
+    board[4][5] = AVAILABLE;
+    board[5][4] = AVAILABLE;
     return {
       board: board,
       turn: null, 
