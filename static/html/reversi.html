@@ -5,20 +5,10 @@
 <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
 
 <div id="app" class="container">
-  <table class="board">
-    <tr class="board_row" v-for="(row, idx1) in board">
-      <td class="board_col" v-bind:class="'index-'+idx1+idx2" v-for="(piece, idx2) in row" v-on:click="click_put">
-        <div class="content">
-          <span v-bind:class="piece+'-piece'"></span>
-        </div>
-      </td>
-    </tr>
-    <modal
-      v-bind:winner="黒"
-      v-bind:black="2"
-      v-bind:white="3"
-    ></modal>
-  </table>
+  <board 
+    @click-cell="put"
+    v-bind:board="board" ref="board"
+  ></board>
 </div>
 
 <script src="/js/modal.js"></script>

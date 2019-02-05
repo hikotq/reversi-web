@@ -3,8 +3,29 @@ var WHITE = "white";
 var BLACK = "black";
 var AVAILABLE = "available";
 
-Vue.config.devtools = false;
-Vue.config.productionTip = false;
+Vue.config.devtools = true;
+Vue.config.productionTip = true;
+
+
+Vue.component('board', {
+  props: ['board'], 
+  template: `
+    <table class="board">
+      <tr class="board_row" v-for="(row, idx1) in board">
+        <td class="board_col" v-bind:class="'index-'+idx1+idx2" v-for="(piece, idx2) in row" v-on:click="clickCell">
+          <div class="content">
+            <span v-bind:class="piece+'-piece'"></span>
+          </div>
+        </td>
+      </tr>
+    </table>`, 
+  methods: {
+    clickCell: function(e) {
+      this.$emit('click-cell', e);
+    }, 
+  }
+})
+
 
 var vm = new Vue({
   el: '#app',
@@ -29,11 +50,12 @@ var vm = new Vue({
       board: board,
       turn: null, 
       ownColor: null, 
-      conn: null
+      conn: null, 
     };
   },
   methods: {
-    click_put: function(e) {
+    put: function(e) {
+      console.log("click_put!");
       let re = /index-(\d)(\d)/;
       let match = re.exec(e.currentTarget.className);
       let y = Number(match[1]);
@@ -43,10 +65,6 @@ var vm = new Vue({
       if (this.conn != null && this.turn == this.ownColor && this.canPut(x, y, this.turn)) {
         this.send_move(this.turn, x, y);
       }
-    }, 
-    put: function(color, x, y) {
-      this.board[y][x] = color;
-      this.$forceUpdate();
     }, 
     canPut: function(x, y) {
       return this.board[y][x] == AVAILABLE;
@@ -91,10 +109,9 @@ var vm = new Vue({
             that.turn = mBody.Game.turn.toLowerCase();
             for (var y = 0; y < 8; y++) {
               for (var x = 0; x < 8; x++) {
-                that.board[y][x] = board[y * 8 + x];
+                that.board[y].splice(x, 1, board[y * 8 + x]);
               }
             }
-            that.$forceUpdate();
             break;
           case 'GameOver':
             let game = mBody.GameOver[0];
@@ -103,10 +120,9 @@ var vm = new Vue({
             that.turn = game.turn.toLowerCase();
             for (var y = 0; y < 8; y++) {
               for (var x = 0; x < 8; x++) {
-                that.board[y][x] = board[y * 8 + x];
+                that.board[y].splice(x, 1, board[y * 8 + x]);
               }
             }
-            that.$forceUpdate();
             swal("Game is over!", winner + " is  winner!");
           default:
             break;
