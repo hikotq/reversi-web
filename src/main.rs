@@ -294,14 +294,14 @@ fn main() {
             .resource("/", |r| {
                 r.method(http::Method::GET).f(|_| {
                     HttpResponse::Found()
-                        .header("LOCATION", "/static/websocket.html")
+                        .header("LOCATION", "/index.html")
                         .finish()
                 })
             })
             // websocket
             .resource("/ws/", |r| r.route().f(chat_route))
             // static resources
-            .handler("/static/", fs::StaticFiles::new("static/").unwrap())
+            .handler("/", fs::StaticFiles::new("static/").unwrap())
     })
     .bind("127.0.0.1:8080")
     .unwrap()

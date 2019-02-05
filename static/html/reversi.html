@@ -1,8 +1,8 @@
-<link rel="stylesheet" type="text/css" href="list.css">
-<link rel="stylesheet" type="text/css" href="board.css">
+<link rel="stylesheet" type="text/css" href="/css/list.css">
+<link rel="stylesheet" type="text/css" href="/css/board.css">
+<link rel="stylesheet" type="text/css" href="/css/modal.css">
 <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
 <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
-
 
 <div id="app" class="container">
   <table class="board">
@@ -13,7 +13,13 @@
         </div>
       </td>
     </tr>
+    <modal
+      v-bind:winner="黒"
+      v-bind:black="2"
+      v-bind:white="3"
+    ></modal>
   </table>
 </div>
 
-<script src="reversi.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/reversi.js"></script>
