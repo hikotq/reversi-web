@@ -12,7 +12,7 @@ Vue.component('room-tr', {
   }
 })
 
-new Vue({
+let roomList = new Vue({
   el: '#room-list',
   template: `
       <table rules="all">
@@ -64,13 +64,10 @@ new Vue({
         console.log('Connected.');
       };
       that.conn.onmessage = function(e) {
-        let room = JSON.parse(e.data);
-        this.rooms[name] = {
-          standByPlayer: room.stand_by_player, 
-          black: room.black, 
-          white: room.white, 
-        };
-        this.$forceUpdate();
+        let message = JSON.parse(e.data);
+        let mKind = message.kind;
+        let mBody = message.body;
+        console.log(message);
       };
       that.conn.onclose = function() {
         console.log('Disconnected.');

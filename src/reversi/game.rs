@@ -13,7 +13,7 @@ const DIR: [Pos<i32>; 8] = [
 
 pub type Winner = Option<Color>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Game {
     pub board: Board,
     pub turn: Color,
@@ -22,8 +22,8 @@ pub struct Game {
     pub pass: bool,
 }
 
-impl Game {
-    pub fn new() -> Self {
+impl Default for Game {
+    fn default() -> Self {
         let mut board = Board::new();
         board.set_cell(Pos { x: 3, y: 3 }, Cell::Piece(Color::White));
         board.set_cell(Pos { x: 4, y: 4 }, Cell::Piece(Color::White));
@@ -39,6 +39,12 @@ impl Game {
         };
         game.update_available_cell();
         game
+    }
+}
+
+impl Game {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn change_turn(&mut self) {

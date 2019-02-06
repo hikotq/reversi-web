@@ -80,6 +80,7 @@ type Uid = usize;
 
 type Uname = String;
 
+#[derive(Serialize, Deserialize, Clone)]
 struct Player {
     id: Uid,
     name: Uname,
@@ -104,8 +105,11 @@ impl Player {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Room {
+    #[serde(skip)]
     sessions: HashSet<usize>,
+    #[serde(skip)]
     game: ReversiGame,
     player1: Option<Player>,
     player2: Option<Player>,
@@ -148,6 +152,14 @@ impl Room {
         }
         None
     }
+}
+
+pub struct ListRooms {
+    pub uid: Uid,
+}
+
+impl actix::Message for ListRooms {
+    type Result = Vec<(String, Room)>;
 }
 
 #[derive(Message)]
@@ -290,6 +302,17 @@ impl Handler<ClientReversiMoveMessage> for GameServer {
                 }
             }
         }
+    }
+}
+
+impl Handler<ListRooms> for GameServer {
+    type Result = MessageResult<ListRooms>;
+
+    fn handle(&mut self, msg: ListRooms, _: &mut Context<Self>) -> Self::Result {
+        let uid = msg.uid;
+
+        let room_list: Vec<(String, Room)> = self.rooms.clone().into_iter().collect();
+        MessageResult(room_list)
     }
 }
 
