@@ -182,7 +182,7 @@ impl Default for GameServer {
 }
 
 impl GameServer {
-    fn send_reversi_message(&self, room: &str, message: ReversiMessage, id: Uid) {
+    fn send_reversi_message(&self, message: ReversiMessage, id: Uid) {
         if let Some(addr) = self.sessions.get(&id) {
             let _ = addr.do_send(message.clone());
         }
@@ -200,7 +200,7 @@ impl GameServer {
                         continue;
                     }
                 }
-                self.send_reversi_message(room, message.clone(), *id);
+                self.send_reversi_message(message.clone(), *id);
             }
         }
     }
@@ -370,7 +370,6 @@ impl Handler<Join> for GameServer {
             game.is_start = true;
         }
         self.send_reversi_message(
-            &name,
             ReversiMessage {
                 kind: ReversiMessageKind::GameStart,
                 body: Some(ReversiMessageBody::GameStart(Color::Black)),
@@ -378,7 +377,6 @@ impl Handler<Join> for GameServer {
             black_id,
         );
         self.send_reversi_message(
-            &name,
             ReversiMessage {
                 kind: ReversiMessageKind::GameStart,
                 body: Some(ReversiMessageBody::GameStart(Color::White)),
