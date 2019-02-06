@@ -104,15 +104,17 @@ impl Player {
     }
 }
 
-pub struct GameRoom {
+pub struct Room {
+    sessions: HashSet<usize>,
     game: ReversiGame,
     player1: Option<Player>,
     player2: Option<Player>,
 }
 
-impl GameRoom {
+impl Room {
     fn new() -> Self {
-        GameRoom {
+        Room {
+            sessions: HashSet::new(),
             game: ReversiGame::new(),
             player1: None,
             player2: None,
@@ -148,20 +150,6 @@ impl GameRoom {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Room {
-    name: String,
-    stand_by_player: String,
-    black: String,
-    white: String,
-}
-
-pub struct ListRooms;
-
-impl actix::Message for ListRooms {
-    type Result = Vec<Room>;
-}
-
 #[derive(Message)]
 pub struct Join {
     pub name: String,
@@ -179,21 +167,15 @@ pub struct MakeRoom {
 
 pub struct GameServer {
     sessions: HashMap<usize, Recipient<ReversiMessage>>,
-    rooms: HashMap<String, HashSet<usize>>,
-    games: HashMap<String, GameRoom>,
+    rooms: HashMap<String, Room>,
     rng: ThreadRng,
 }
 
 impl Default for GameServer {
     fn default() -> GameServer {
-        // default room
-        let mut rooms = HashMap::new();
-        rooms.insert("Main".to_owned(), HashSet::new());
-
         GameServer {
             sessions: HashMap::new(),
-            rooms: rooms,
-            games: HashMap::new(),
+            rooms: HashMap::new(),
             rng: rand::thread_rng(),
         }
     }
@@ -211,7 +193,7 @@ impl GameServer {
         message: ReversiMessage,
         skip_id: Option<usize>,
     ) {
-        if let Some(sessions) = self.rooms.get(room) {
+        if let Some(Room { sessions, .. }) = self.rooms.get(room) {
             for id in sessions {
                 if let Some(skip_id) = skip_id {
                     if *id == skip_id {
@@ -238,9 +220,6 @@ impl Handler<Connect> for GameServer {
         let id = self.rng.gen::<usize>();
         self.sessions.insert(id, msg.addr);
 
-        // auto join session to Main room
-        self.rooms.get_mut(&"Main".to_owned()).unwrap().insert(id);
-
         // send id back
         id
     }
@@ -252,16 +231,12 @@ impl Handler<Disconnect> for GameServer {
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
         println!("Someone disconnected");
 
-        let mut rooms: Vec<String> = Vec::new();
-
         // remove address
         if self.sessions.remove(&msg.id).is_some() {
             // remove session from all rooms
-            for (name, sessions) in &mut self.rooms {
-                if sessions.remove(&msg.id) {
-                    rooms.push(name.to_owned());
-                }
-            }
+            self.rooms.retain(|name, Room { sessions, .. }| {
+                sessions.remove(&msg.id) && !sessions.is_empty()
+            });
         }
     }
 }
@@ -272,15 +247,15 @@ impl Handler<ClientReversiMoveMessage> for GameServer {
     fn handle(&mut self, msg: ClientReversiMoveMessage, _: &mut Context<Self>) {
         use self::{ReversiMessage, ReversiMessageBody, ReversiMessageKind};
         let mut is_over = false;
-        if self.games.contains_key(&msg.room) {
+        if self.rooms.contains_key(&msg.room) {
             let result = {
-                let game = self.games.get_mut(&msg.room).unwrap();
-                println!("{:?}", game.game.board);
-                if game.game.is_start {
-                    let result = game.game.put_piece(msg.reversi_move);
-                    if result.is_ok() && !game.game.is_over {
-                        game.game.change_turn();
-                        is_over = game.game.is_over;
+                let room = self.rooms.get_mut(&msg.room).unwrap();
+                println!("{:?}", room.game.board);
+                if room.game.is_start {
+                    let result = room.game.put_piece(msg.reversi_move);
+                    if result.is_ok() && !room.game.is_over {
+                        room.game.change_turn();
+                        is_over = room.game.is_over;
                     }
                     result
                 } else {
@@ -290,7 +265,7 @@ impl Handler<ClientReversiMoveMessage> for GameServer {
             println!("{:?}", result);
             if result.is_ok() {
                 if is_over {
-                    let game = &self.games.get(&msg.room).unwrap().game;
+                    let game = &self.rooms.get(&msg.room).unwrap().game;
                     let winner = game.winner();
                     let game = Game::from(game);
                     self.send_reversi_message_room(
@@ -307,7 +282,7 @@ impl Handler<ClientReversiMoveMessage> for GameServer {
                         ReversiMessage {
                             kind: ReversiMessageKind::Game,
                             body: Some(ReversiMessageBody::Game(Game::from(
-                                &self.games.get(&msg.room).unwrap().game,
+                                &self.rooms.get(&msg.room).unwrap().game,
                             ))),
                         },
                         None,
@@ -318,20 +293,6 @@ impl Handler<ClientReversiMoveMessage> for GameServer {
     }
 }
 
-impl Handler<ListRooms> for GameServer {
-    type Result = MessageResult<ListRooms>;
-
-    fn handle(&mut self, _: ListRooms, _: &mut Context<Self>) -> Self::Result {
-        let mut rooms = Vec::new();
-
-        for (room_name, game) in self.games.iter() {
-            if !game.game.is_start {}
-        }
-
-        MessageResult(rooms)
-    }
-}
-
 impl Handler<Join> for GameServer {
     type Result = ();
 
@@ -339,27 +300,27 @@ impl Handler<Join> for GameServer {
         let Join { name, uid, uname } = msg;
 
         //ゲームルームが存在していないか、すでに満員の場合は終了
-        println!("{}", self.games.contains_key(&name));
-        if !self.games.contains_key(&name) || self.games.get(&name).unwrap().player2.is_some() {
+        println!("{}", self.rooms.contains_key(&name));
+        if !self.rooms.contains_key(&name) || self.rooms.get(&name).unwrap().player2.is_some() {
             println!("Failed enter the room");
             return;
         }
 
         // すべてのゲームルームからセッションを削除
-        for (_, sessions) in &mut self.rooms {
+        for (_, Room { sessions, .. }) in &mut self.rooms {
             sessions.remove(&uid);
         }
 
         //uidが一致するplayerがgameに登録されていたら消す
-        for game in self.games.values_mut() {
-            if let Some(p1) = game.player1.take() {
+        for room in self.rooms.values_mut() {
+            if let Some(p1) = room.player1.take() {
                 if p1.id != uid {
-                    game.player1 = Some(p1);
+                    room.player1 = Some(p1);
                 }
             }
-            if let Some(p2) = game.player2.take() {
+            if let Some(p2) = room.player2.take() {
                 if p2.id != uid {
-                    game.player2 = Some(p2);
+                    room.player2 = Some(p2);
                 }
             }
         }
@@ -367,8 +328,8 @@ impl Handler<Join> for GameServer {
         println!("{}: Someone connected", name);
 
         // プレイヤーの登録
-        self.rooms.get_mut(&name).unwrap().insert(uid);
-        self.games.get_mut(&name).unwrap().player2 = Some(Player {
+        self.rooms.get_mut(&name).unwrap().sessions.insert(uid);
+        self.rooms.get_mut(&name).unwrap().player2 = Some(Player {
             id: uid,
             name: uname,
             color: None,
@@ -380,11 +341,12 @@ impl Handler<Join> for GameServer {
         let black_id;
         let white_id;
         {
-            let GameRoom {
+            let Room {
                 ref mut player1,
                 ref mut player2,
                 ref mut game,
-            } = self.games.get_mut(&name).unwrap();
+                ..
+            } = self.rooms.get_mut(&name).unwrap();
             let player1 = player1.as_mut().unwrap();
             let player2 = player2.as_mut().unwrap();
             if let Some(color) = player1.color.clone() {
@@ -443,19 +405,18 @@ impl Handler<MakeRoom> for GameServer {
             return;
         }
 
-        self.rooms.insert(name.clone(), HashSet::new());
-        self.rooms.get_mut(&name).unwrap().insert(uid);
-        self.games.insert(
-            name.clone(),
-            GameRoom {
-                player1: Some(Player {
-                    id: uid,
-                    name: uname,
-                    color: color,
-                }),
-                player2: None,
-                game: ReversiGame::new(),
-            },
-        );
+        let mut sessions = HashSet::new();
+        sessions.insert(uid);
+        let room = Room {
+            sessions,
+            player1: Some(Player {
+                id: uid,
+                name: uname,
+                color: color,
+            }),
+            player2: None,
+            game: ReversiGame::new(),
+        };
+        self.rooms.insert(name.clone(), room);
     }
 }

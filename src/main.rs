@@ -141,30 +141,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                 if m.starts_with('/') {
                     let v: Vec<&str> = m.splitn(4, ' ').collect();
                     match v[0] {
-                        "/standByList" => {
-                            // Send ListRooms message to chat server and wait for
-                            // response
-                            println!("List rooms");
-                            ctx.state()
-                                .addr
-                                .send(server::ListRooms)
-                                .into_actor(self)
-                                .then(|res, _, ctx| {
-                                    match res {
-                                        Ok(rooms) => {
-                                            for room in &rooms {
-                                                ctx.text(serde_json::to_string(room).unwrap());
-                                            }
-                                        }
-                                        _ => println!("Something is wrong"),
-                                    }
-                                    fut::ok(())
-                                })
-                                .wait(ctx)
-                            // .wait(ctx) pauses all events in context,
-                            // so actor wont receive any new messages until it get list
-                            // of rooms back
-                        }
                         "/join" => {
                             if v.len() == 3 {
                                 self.room = v[1].to_owned();
