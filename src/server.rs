@@ -80,7 +80,7 @@ type Uid = usize;
 
 type Uname = String;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct Player {
     id: Uid,
     name: Uname,
@@ -105,7 +105,7 @@ impl Player {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Room {
     #[serde(skip)]
     sessions: HashSet<usize>,
@@ -315,6 +315,7 @@ impl Handler<ListRooms> for GameServer {
         let uid = msg.uid;
 
         let room_list: Vec<(String, Room)> = self.rooms.clone().into_iter().collect();
+        println!("{:?}", room_list);
         MessageResult(room_list)
     }
 }

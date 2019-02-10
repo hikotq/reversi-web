@@ -1,51 +1,36 @@
-Vue.component('room-tr', {
-  props: ['name', 'standByPlayer', 'black', 'white'],
-  template: '<tr><td>{{ name }}</td><td v-bind:class="classObject">{{ standByPlayer }}</td></tr>', 
+Vue.component('room-tr', { props: ['room'],
+  template: '<tr><td>{{ room[0] }}</td><td>{{ room[1].player1.name }}</td><td v-if="room[1].player2 != null">{{ room[1].player2.name }}</td><td v-else></td></tr>', 
   computed: {
-    classObject: function() {
-      return {
-        'black-td': this.black, 
-        'white-td': this.white, 
-        'gray-td': !(this.black || this.white)
-      }
-    }
   }
 })
 
-let roomList = new Vue({
+let roomListV = new Vue({
   el: '#room-list',
   template: `
       <table rules="all">
+        <tr>
+          <th scope="col">Room Name</th>
+          <th scope="col">Player1</th>
+          <th scope="col">Player2</th>
+        </tr>
         <tbody>
-          <room-tr v-for="room_name in Object.keys(rooms)"
-            v-bind:name="room_name" 
-            v-bind:standByPlayer="rooms[room_name].standByPlayer" 
-            v-bind:black="rooms[room_name].black" 
-            v-bind:white="rooms[room_name].white"
+          <room-tr v-for="room in rooms"
+            v-bind:room="room" 
+            :key="room[0]"
           >
           </room-tr>
         </tbody>
       </table>`, 
   data() {
     return {
-      rooms: {
-        "12345": {
-          standByPlayer: "Hikota", 
-          black: true, 
-          white: null, 
-        }, 
-        "234524": {
-          standByPlayer: "Hikota", 
-          black: null, 
-          white: null, 
-        }
-      }, 
+      rooms:[ 
+      ],  
       conn: null, 
     };
   }, 
   methods: {
-    checkRoomStatus: function() {
-      this.conn.send("/standByList");
+    listRooms: function() {
+      this.conn.send("/listRooms");
     }, 
     disconnect: function() {
       if (this.conn != null) {
@@ -58,16 +43,17 @@ let roomList = new Vue({
       let that = this;
       that.disconnect();
       var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host + '/ws/';
+      console.log(wsUri);
       that.conn = new WebSocket(wsUri);
       console.log('Connecting...');
       that.conn.onopen = function() {
         console.log('Connected.');
+        that.listRooms();
       };
       that.conn.onmessage = function(e) {
-        let message = JSON.parse(e.data);
-        let mKind = message.kind;
-        let mBody = message.body;
-        console.log(message);
+        that.rooms = JSON.parse(e.data);
+        console.log(JSON.parse(e.data));
+        that.$forceUpdate();
       };
       that.conn.onclose = function() {
         console.log('Disconnected.');
@@ -77,3 +63,4 @@ let roomList = new Vue({
   }, 
 })
 
+roomListV.connect();

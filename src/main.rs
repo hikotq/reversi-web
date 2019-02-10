@@ -141,7 +141,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                 if m.starts_with('/') {
                     let v: Vec<&str> = m.splitn(4, ' ').collect();
                     match v[0] {
-                        "/standByList" => {
+                        "/listRooms" => {
                             // Send ListRooms message to chat server and wait for
                             // response
                             println!("List rooms");
