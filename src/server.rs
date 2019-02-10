@@ -245,9 +245,12 @@ impl Handler<Disconnect> for GameServer {
 
         // remove address
         if self.sessions.remove(&msg.id).is_some() {
-            // remove session from all rooms
+            // GameServerのセッションから
+            // ユーザーが削除された場合、各Roomのセッションからもユーザーを削除し
+            // Roomのセッションが空になった場合はRoomを削除
             self.rooms.retain(|name, Room { sessions, .. }| {
-                sessions.remove(&msg.id) && !sessions.is_empty()
+                sessions.remove(&msg.id);
+                !sessions.is_empty()
             });
         }
     }
