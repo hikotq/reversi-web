@@ -1,21 +1,19 @@
 use actix::prelude::*;
+use message::*;
 use rand::{self, rngs::ThreadRng, Rng};
-use reversi::board::{Cell, Color, Move as ReversiMove};
+use reversi::board::{Color, Move as ReversiMove};
 use reversi::game::{Game as ReversiGame, Winner};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Message)]
-pub struct Message(pub String);
+type Uid = usize;
+type Uname = String;
 
 #[derive(Message)]
-#[rtype(usize)]
-pub struct Connect {
-    pub addr: Recipient<ReversiMessage>,
-}
-
-#[derive(Message)]
-pub struct Disconnect {
-    pub id: usize,
+pub struct MakeRoom {
+    pub name: String,
+    pub uid: Uid,
+    pub uname: Uname,
+    pub color: Option<Color>,
 }
 
 #[derive(Message)]
@@ -75,10 +73,6 @@ pub enum ReversiMessageBody {
     GameStart(Color),
     Game(Game),
 }
-
-type Uid = usize;
-
-type Uname = String;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Player {
@@ -154,29 +148,6 @@ impl Room {
     }
 }
 
-pub struct ListRooms {
-    pub uid: Uid,
-}
-
-impl actix::Message for ListRooms {
-    type Result = Vec<(String, Room)>;
-}
-
-#[derive(Message)]
-pub struct Join {
-    pub name: String,
-    pub uid: Uid,
-    pub uname: Uname,
-}
-
-#[derive(Message)]
-pub struct MakeRoom {
-    pub name: String,
-    pub uid: Uid,
-    pub uname: Uname,
-    pub color: Option<Color>,
-}
-
 pub struct GameServer {
     sessions: HashMap<usize, Recipient<ReversiMessage>>,
     rooms: HashMap<String, Room>,
@@ -222,10 +193,10 @@ impl Actor for GameServer {
     type Context = Context<Self>;
 }
 
-impl Handler<Connect> for GameServer {
+impl Handler<Connect<ReversiMessage>> for GameServer {
     type Result = usize;
 
-    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: Connect<ReversiMessage>, _: &mut Context<Self>) -> Self::Result {
         println!("Someone joined");
 
         // register session with random id
