@@ -148,9 +148,143 @@ impl Room {
     }
 }
 
+type RoomMap = HashMap<String, Room>;
+
+trait RoomMapImpl {
+    fn make_room(&mut self, room_name: String, Uid, Uname, Option<Color>);
+    fn join(&mut self, room_name: String, Uid, Uname) -> Result<(usize, usize), String>;
+    fn leave(&mut self, Uid);
+}
+
+impl RoomMapImpl for RoomMap {
+    fn make_room(&mut self, room_name: String, uid: Uid, uname: Uname, color: Option<Color>) {
+        if self.get_mut(&room_name).is_some() {
+            eprintln!("Room {} is already created", room_name);
+            return;
+        }
+
+        let mut sessions = HashSet::new();
+        sessions.insert(uid);
+        let room = Room {
+            sessions,
+            player1: Some(Player {
+                id: uid,
+                name: uname,
+                color: color,
+            }),
+            player2: None,
+            game: ReversiGame::new(),
+        };
+        self.insert(room_name.clone(), room);
+    }
+
+    fn join(
+        &mut self,
+        room_name: String,
+        uid: Uid,
+        uname: Uname,
+    ) -> Result<(usize, usize), String> {
+        //ゲームルームが存在していないか、すでに満員の場合は終了
+        if !self.contains_key(&room_name) || self.get(&room_name).unwrap().player2.is_some() {
+            println!("Failed enter the room");
+            return Err("Failed enter the room".to_string());
+        }
+
+        // すべてのゲームルームからセッションを削除
+        for (_, Room { sessions, .. }) in self.iter_mut() {
+            sessions.remove(&uid);
+        }
+
+        //uidが一致するplayerがgameに登録されていたら消す
+        for room in self.values_mut() {
+            if let Some(p1) = room.player1.take() {
+                if p1.id != uid {
+                    room.player1 = Some(p1);
+                }
+            }
+            if let Some(p2) = room.player2.take() {
+                if p2.id != uid {
+                    room.player2 = Some(p2);
+                }
+            }
+        }
+
+        println!("{}: Someone connected", room_name);
+
+        // プレイヤーの登録
+        self.get_mut(&room_name).unwrap().sessions.insert(uid);
+        self.get_mut(&room_name).unwrap().player2 = Some(Player {
+            id: uid,
+            name: uname,
+            color: None,
+        });
+
+        //1Pの色とは逆の色を入れる.
+        //TODO 1Pの色が指定されていない場合は1Pの色はランダムで決めて, 2Pはもう片方の色にする.
+        //TODO Rust2018Editionを適用してNLLを使う
+        let black_id;
+        let white_id;
+        {
+            let Room {
+                ref mut player1,
+                ref mut player2,
+                ref mut game,
+                ..
+            } = self.get_mut(&room_name).unwrap();
+            let player1 = player1.as_mut().unwrap();
+            let player2 = player2.as_mut().unwrap();
+            if let Some(color) = player1.color.clone() {
+                let color = if color.is_black() {
+                    Color::White
+                } else {
+                    Color::Black
+                };
+                player2.color = Some(color);
+            } else {
+                player1.color = Some(Color::Black);
+                player2.color = Some(Color::White);
+            }
+            if player1.color.unwrap().is_black() {
+                black_id = player1.id;
+                white_id = player2.id;
+            } else {
+                white_id = player1.id;
+                black_id = player2.id;
+            }
+            game.is_start = true;
+        }
+        Ok((black_id, white_id))
+    }
+
+    // 各Roomのセッションからもユーザーを削除し
+    // セッションが空になったRoomを取り除く
+    fn leave(&mut self, uid: Uid) {
+        self.retain(
+            |name,
+             Room {
+                 sessions,
+                 player1,
+                 player2,
+                 ..
+             }| {
+                // 退出するユーザーがプレイヤーである場合は
+                // 対応するプレイヤー(player1、またはplayer2)をNoneにする
+                *player1 = player1.take().filter(|p1| p1.id != uid);
+                *player2 = player2.take().filter(|p2| p2.id != uid);
+
+                sessions.remove(&uid);
+                if sessions.is_empty() {
+                    println!("Remove Room: {}", name);
+                }
+                !sessions.is_empty()
+            },
+        )
+    }
+}
+
 pub struct GameServer {
     sessions: HashMap<usize, Recipient<ReversiMessage>>,
-    rooms: HashMap<String, Room>,
+    rooms: RoomMap,
     rng: ThreadRng,
 }
 
@@ -216,13 +350,7 @@ impl Handler<Disconnect> for GameServer {
 
         // remove address
         if self.sessions.remove(&msg.id).is_some() {
-            // GameServerのセッションから
-            // ユーザーが削除された場合、各Roomのセッションからもユーザーを削除し
-            // Roomのセッションが空になった場合はRoomを削除
-            self.rooms.retain(|name, Room { sessions, .. }| {
-                sessions.remove(&msg.id);
-                !sessions.is_empty()
-            });
+            self.rooms.leave(msg.id);
         }
     }
 }
@@ -296,91 +424,22 @@ impl Handler<Join> for GameServer {
 
     fn handle(&mut self, msg: Join, _: &mut Context<Self>) {
         let Join { name, uid, uname } = msg;
-
-        //ゲームルームが存在していないか、すでに満員の場合は終了
-        println!("{}", self.rooms.contains_key(&name));
-        if !self.rooms.contains_key(&name) || self.rooms.get(&name).unwrap().player2.is_some() {
-            println!("Failed enter the room");
-            return;
+        if let Ok((black_id, white_id)) = self.rooms.join(name, uid, uname) {
+            self.send_reversi_message(
+                ReversiMessage {
+                    kind: ReversiMessageKind::GameStart,
+                    body: Some(ReversiMessageBody::GameStart(Color::Black)),
+                },
+                black_id,
+            );
+            self.send_reversi_message(
+                ReversiMessage {
+                    kind: ReversiMessageKind::GameStart,
+                    body: Some(ReversiMessageBody::GameStart(Color::White)),
+                },
+                white_id,
+            );
         }
-
-        // すべてのゲームルームからセッションを削除
-        for (_, Room { sessions, .. }) in &mut self.rooms {
-            sessions.remove(&uid);
-        }
-
-        //uidが一致するplayerがgameに登録されていたら消す
-        for room in self.rooms.values_mut() {
-            if let Some(p1) = room.player1.take() {
-                if p1.id != uid {
-                    room.player1 = Some(p1);
-                }
-            }
-            if let Some(p2) = room.player2.take() {
-                if p2.id != uid {
-                    room.player2 = Some(p2);
-                }
-            }
-        }
-
-        println!("{}: Someone connected", name);
-
-        // プレイヤーの登録
-        self.rooms.get_mut(&name).unwrap().sessions.insert(uid);
-        self.rooms.get_mut(&name).unwrap().player2 = Some(Player {
-            id: uid,
-            name: uname,
-            color: None,
-        });
-
-        //1Pの色とは逆の色を入れる.
-        //TODO 1Pの色が指定されていない場合は1Pの色はランダムで決めて, 2Pはもう片方の色にする.
-        //TODO Rust2018Editionを適用してNLLを使う
-        let black_id;
-        let white_id;
-        {
-            let Room {
-                ref mut player1,
-                ref mut player2,
-                ref mut game,
-                ..
-            } = self.rooms.get_mut(&name).unwrap();
-            let player1 = player1.as_mut().unwrap();
-            let player2 = player2.as_mut().unwrap();
-            if let Some(color) = player1.color.clone() {
-                let color = if color.is_black() {
-                    Color::White
-                } else {
-                    Color::Black
-                };
-                player2.color = Some(color);
-            } else {
-                player1.color = Some(Color::Black);
-                player2.color = Some(Color::White);
-            }
-            if player1.color.unwrap().is_black() {
-                black_id = player1.id;
-                white_id = player2.id;
-            } else {
-                white_id = player1.id;
-                black_id = player2.id;
-            }
-            game.is_start = true;
-        }
-        self.send_reversi_message(
-            ReversiMessage {
-                kind: ReversiMessageKind::GameStart,
-                body: Some(ReversiMessageBody::GameStart(Color::Black)),
-            },
-            black_id,
-        );
-        self.send_reversi_message(
-            ReversiMessage {
-                kind: ReversiMessageKind::GameStart,
-                body: Some(ReversiMessageBody::GameStart(Color::White)),
-            },
-            white_id,
-        );
     }
 }
 
@@ -395,24 +454,6 @@ impl Handler<MakeRoom> for GameServer {
         } = msg;
 
         println!("{} made GameRoom: {}", uname, name);
-
-        if self.rooms.get_mut(&name).is_some() {
-            eprintln!("Room {} is already created", name);
-            return;
-        }
-
-        let mut sessions = HashSet::new();
-        sessions.insert(uid);
-        let room = Room {
-            sessions,
-            player1: Some(Player {
-                id: uid,
-                name: uname,
-                color: color,
-            }),
-            player2: None,
-            game: ReversiGame::new(),
-        };
-        self.rooms.insert(name.clone(), room);
+        self.rooms.make_room(name, uid, uname, color);
     }
 }
