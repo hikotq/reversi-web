@@ -1,11 +1,10 @@
 use std::time::{Duration, Instant};
 
+use crate::message;
+use crate::server;
 use actix::*;
 use actix_web::server::HttpServer;
 use actix_web::{fs, http, ws, App as ActixApp, Error, HttpRequest, HttpResponse};
-
-use crate::message;
-use crate::server;
 use reversi::board::{Color, Move as ReversiMove};
 use std::str::FromStr;
 
@@ -294,4 +293,72 @@ impl App {
         println!("Started http server: 127.0.0.1:8080");
         let _ = sys.run();
     }
+}
+
+#[test]
+fn test_make_room() {
+    use crate::server;
+    use actix_web::*;
+    use futures::{Future, Stream};
+    use std::{thread, time};
+
+    macro_rules! read_ws_assert {
+        ($server:expr, $reader:ident, $expect:expr) => {
+            let (item, $reader) = $server.execute($reader.into_future()).unwrap();
+            assert_eq!(item, Some($expect));
+        };
+    }
+
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    thread::spawn(move || {
+        let sys = actix::System::new("http-server");
+        let addr = Arbiter::start(|_| server::GameServer::default());
+        let _ = tx.send(addr);
+        let _ = sys.run();
+    });
+
+    let server = rx.recv().unwrap();
+    let mut srv = test::TestServer::build_with_state(move || WsGameSessionState {
+        addr: server.clone(),
+    })
+    .start(|app| {
+        app.handler(|req| {
+            ws::start(
+                req,
+                WsGameSession {
+                    id: 0,
+                    hb: Instant::now(),
+                    room: "Main".to_owned(),
+                    name: None,
+                    color: None,
+                },
+            )
+        })
+    });
+
+    let (r1, mut w1) = srv.ws().unwrap();
+
+    let (r2, mut w2) = srv.ws().unwrap();
+
+    w1.text("/makeRoom Shiba pipopa black");
+    w1.ping("");
+    w2.text("/join Shiba Tatsuo");
+
+    read_ws_assert!(srv, r1, ws::Message::Pong("".to_string()));
+    read_ws_assert!(srv, r2, ws::Message::Text("joined".to_string()));
+    read_ws_assert!(
+        srv,
+        r1,
+        ws::Message::Text(
+            "{\"kind\":\"GameStart\",\"body\":{\"GameStart\":\"Black\"}}".to_string()
+        )
+    );
+    read_ws_assert!(
+        srv,
+        r2,
+        ws::Message::Text(
+            "{\"kind\":\"GameStart\",\"body\":{\"GameStart\":\"White\"}}".to_string()
+        )
+    );
 }
