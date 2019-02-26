@@ -14,17 +14,16 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// This is our websocket route state, this state is shared with all route
-/// instances via `HttpContext::state()`
-struct WsChatSessionState {
+/// This is our websocket route state, this state is shared with all route instances via `HttpContext::state()`
+struct WsGameSessionState {
     addr: Addr<server::GameServer>,
 }
 
 /// Entry point for our route
-fn chat_route(req: &HttpRequest<WsChatSessionState>) -> Result<HttpResponse, Error> {
+fn chat_route(req: &HttpRequest<WsGameSessionState>) -> Result<HttpResponse, Error> {
     ws::start(
         req,
-        WsChatSession {
+        WsGameSession {
             id: 0,
             hb: Instant::now(),
             room: "Main".to_owned(),
@@ -34,7 +33,7 @@ fn chat_route(req: &HttpRequest<WsChatSessionState>) -> Result<HttpResponse, Err
     )
 }
 
-struct WsChatSession {
+struct WsGameSession {
     /// unique session id
     id: usize,
     /// Client must send ping at least once per 10 seconds (CLIENT_TIMEOUT),
@@ -48,8 +47,8 @@ struct WsChatSession {
     name: Option<String>,
 }
 
-impl Actor for WsChatSession {
-    type Context = ws::WebsocketContext<Self, WsChatSessionState>;
+impl Actor for WsGameSession {
+    type Context = ws::WebsocketContext<Self, WsGameSessionState>;
 
     /// Method is called on actor start.
     /// We register ws session with GameServer
@@ -60,7 +59,7 @@ impl Actor for WsChatSession {
         // register self in chat server. `AsyncContext::wait` register
         // future within context, but context waits until this future resolves
         // before processing any other events.
-        // HttpContext::state() is instance of WsChatSessionState, state is shared
+        // HttpContext::state() is instance of WsGameSessionState, state is shared
         // across all routes within application
         let addr = ctx.address();
         ctx.state()
@@ -90,7 +89,7 @@ impl Actor for WsChatSession {
 }
 
 /// Handle messages from chat server, we simply send it to peer websocket
-impl Handler<message::Message> for WsChatSession {
+impl Handler<message::Message> for WsGameSession {
     type Result = ();
 
     fn handle(&mut self, msg: message::Message, ctx: &mut Self::Context) {
@@ -98,7 +97,7 @@ impl Handler<message::Message> for WsChatSession {
     }
 }
 
-impl Handler<server::ReversiMessage> for WsChatSession {
+impl Handler<server::ReversiMessage> for WsGameSession {
     type Result = ();
 
     fn handle(&mut self, msg: server::ReversiMessage, ctx: &mut Self::Context) {
@@ -108,7 +107,7 @@ impl Handler<server::ReversiMessage> for WsChatSession {
 }
 
 /// WebSocket message handler
-impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
+impl StreamHandler<ws::Message, ws::ProtocolError> for WsGameSession {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
         println!("WEBSOCKET MESSAGE: {:?}", msg);
         match msg {
@@ -231,11 +230,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
     }
 }
 
-impl WsChatSession {
+impl WsGameSession {
     /// helper method that sends ping to client every second.
     ///
     /// also this method checks heartbeats from client
-    fn hb(&self, ctx: &mut ws::WebsocketContext<Self, WsChatSessionState>) {
+    fn hb(&self, ctx: &mut ws::WebsocketContext<Self, WsGameSessionState>) {
         ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
             // check client heartbeats
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
@@ -270,7 +269,7 @@ impl App {
         // Create Http server with websocket support
         HttpServer::new(move || {
             // Websocket sessions state
-            let state = WsChatSessionState {
+            let state = WsGameSessionState {
                 addr: server.clone(),
             };
 
